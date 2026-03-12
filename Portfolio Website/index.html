@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cain Hughes — Cybersecurity & IT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script>
+    (function(){var t=localStorage.getItem('theme');if(t==='light'||(!t&&window.matchMedia('(prefers-color-scheme: light)').matches))document.documentElement.setAttribute('data-theme','light');})();
+  </script>
+</head>
+<body>
+
+  <!-- CODE BACKGROUND -->
+  <div class="code-bg" aria-hidden="true">
+    <div class="code-col code-col-1"><pre><span class="cm"># docker-compose.yml — wazuh siem stack</span>
+<span class="kw">version</span>: <span class="str">'3.8'</span>
+
+<span class="kw">services</span>:
+  <span class="fn">wazuh-manager</span>:
+    <span class="kw">image</span>: <span class="str">wazuh/wazuh-manager:4.7.0</span>
+    <span class="kw">container_name</span>: <span class="str">wazuh-manager</span>
+    <span class="kw">ports</span>:
+      - <span class="str">"1514:1514"</span>
+      - <span class="str">"1515:1515"</span>
+      - <span class="str">"55000:55000"</span>
+    <span class="kw">environment</span>:
+      INDEXER_URL: <span class="str">https://wazuh-indexer:9200</span>
+    <span class="kw">volumes</span>:
+      - <span class="str">wazuh_etc:/var/ossec/etc</span>
+      - <span class="str">wazuh_logs:/var/ossec/logs</span>
+    <span class="kw">restart</span>: <span class="str">always</span>
+    <span class="kw">networks</span>:
+      - <span class="str">wazuh-net</span>
+
+  <span class="fn">wazuh-indexer</span>:
+    <span class="kw">image</span>: <span class="str">wazuh/wazuh-indexer:4.7.0</span>
+    <span class="kw">environment</span>:
+      OPENSEARCH_JAVA_OPTS: <span class="str">"-Xms1g -Xmx1g"</span>
+    <span class="kw">volumes</span>:
+      - <span class="str">indexer_data:/var/lib/wazuh-indexer</span>
+
+  <span class="fn">wazuh-dashboard</span>:
+    <span class="kw">image</span>: <span class="str">wazuh/wazuh-dashboard:4.7.0</span>
+    <span class="kw">ports</span>:
+      - <span class="str">"443:5601"</span>
+    <span class="kw">depends_on</span>:
+      - <span class="str">wazuh-indexer</span>
+      - <span class="str">wazuh-manager</span>
+
+<span class="kw">volumes</span>:
+  <span class="str">wazuh_etc</span>:
+  <span class="str">wazuh_logs</span>:
+  <span class="str">indexer_data</span>:
+
+<span class="kw">networks</span>:
+  <span class="fn">wazuh-net</span>:
+    <span class="kw">driver</span>: <span class="str">bridge</span>
+
+<span class="cm">#!/bin/bash</span>
+<span class="cm"># deploy_wazuh_agents.sh</span>
+MANAGER=<span class="str">"10.0.1.100"</span>
+AGENTS=(<span class="str">"10.0.1.50"</span> <span class="str">"10.0.1.51"</span> <span class="str">"10.0.2.10"</span>)
+
+<span class="kw">for</span> host <span class="kw">in</span> <span class="str">"${AGENTS[@]}"</span>; <span class="kw">do</span>
+    <span class="fn">echo</span> <span class="str">"[+] Deploying agent to $host"</span>
+    scp wazuh-agent.deb root@$host:/tmp/
+    ssh root@$host <span class="str">"dpkg -i /tmp/wazuh-agent.deb &amp;&amp; \
+        systemctl enable wazuh-agent &amp;&amp; \
+        systemctl start wazuh-agent"</span>
+<span class="kw">done</span>
+
+<span class="cm"># proxmox_backup.sh</span>
+NODE=<span class="str">"pve-homelab"</span>
+<span class="kw">for</span> vmid <span class="kw">in</span> $(pvesh get /nodes/$NODE/qemu \
+    --output json | jq -r <span class="str">'.[].vmid'</span>); <span class="kw">do</span>
+    <span class="fn">echo</span> <span class="str">"[*] Backing up VM $vmid..."</span>
+    vzdump $vmid --storage local-backup \
+        --mode snapshot --compress zstd
+<span class="kw">done</span>
+<span class="fn">echo</span> <span class="str">"[+] All backups complete"</span>
+
+<span class="cm"># minecraft_server.log</span>
+[<span class="fn">Server</span>] <span class="str">/gamemode survival</span>
+[<span class="fn">Server</span>] <span class="str">/give @p minecraft:diamond_sword</span>
+[<span class="fn">Server</span>] <span class="str">/tp @a ~ ~100 ~</span>
+[<span class="fn">Server</span>] <span class="str">/time set day</span>
+[<span class="fn">Server</span>] <span class="str">/weather clear</span>
+[<span class="fn">Server</span>] <span class="str">/difficulty hard</span>
+[<span class="fn">Server</span>] <span class="str">/whitelist add CainHughes</span>
+[<span class="fn">Server</span>] <span class="str">/op CainHughes</span>
+[<span class="fn">Server</span>] <span class="str">/enchant @p sharpness 5</span>
+[<span class="fn">Server</span>] <span class="str">/effect give @p minecraft:speed 600 2</span>
+
+<span class="cm"># docker-compose.yml — wazuh siem stack</span>
+<span class="kw">version</span>: <span class="str">'3.8'</span>
+
+<span class="kw">services</span>:
+  <span class="fn">wazuh-manager</span>:
+    <span class="kw">image</span>: <span class="str">wazuh/wazuh-manager:4.7.0</span>
+    <span class="kw">container_name</span>: <span class="str">wazuh-manager</span>
+    <span class="kw">ports</span>:
+      - <span class="str">"1514:1514"</span>
+      - <span class="str">"1515:1515"</span>
+      - <span class="str">"55000:55000"</span>
+    <span class="kw">environment</span>:
+      INDEXER_URL: <span class="str">https://wazuh-indexer:9200</span>
+    <span class="kw">volumes</span>:
+      - <span class="str">wazuh_etc:/var/ossec/etc</span>
+      - <span class="str">wazuh_logs:/var/ossec/logs</span>
+    <span class="kw">restart</span>: <span class="str">always</span>
+    <span class="kw">networks</span>:
+      - <span class="str">wazuh-net</span>
+
+  <span class="fn">wazuh-indexer</span>:
+    <span class="kw">image</span>: <span class="str">wazuh/wazuh-indexer:4.7.0</span>
+    <span class="kw">environment</span>:
+      OPENSEARCH_JAVA_OPTS: <span class="str">"-Xms1g -Xmx1g"</span>
+    <span class="kw">volumes</span>:
+      - <span class="str">indexer_data:/var/lib/wazuh-indexer</span>
+
+  <span class="fn">wazuh-dashboard</span>:
+    <span class="kw">image</span>: <span class="str">wazuh/wazuh-dashboard:4.7.0</span>
+    <span class="kw">ports</span>:
+      - <span class="str">"443:5601"</span>
+    <span class="kw">depends_on</span>:
+      - <span class="str">wazuh-indexer</span>
+      - <span class="str">wazuh-manager</span>
+
+<span class="kw">volumes</span>:
+  <span class="str">wazuh_etc</span>:
+  <span class="str">wazuh_logs</span>:
+  <span class="str">indexer_data</span>:
+
+<span class="kw">networks</span>:
+  <span class="fn">wazuh-net</span>:
+    <span class="kw">driver</span>: <span class="str">bridge</span>
+
+<span class="cm">#!/bin/bash</span>
+<span class="cm"># deploy_wazuh_agents.sh</span>
+MANAGER=<span class="str">"10.0.1.100"</span>
+AGENTS=(<span class="str">"10.0.1.50"</span> <span class="str">"10.0.1.51"</span> <span class="str">"10.0.2.10"</span>)
+
+<span class="kw">for</span> host <span class="kw">in</span> <span class="str">"${AGENTS[@]}"</span>; <span class="kw">do</span>
+    <span class="fn">echo</span> <span class="str">"[+] Deploying agent to $host"</span>
+    scp wazuh-agent.deb root@$host:/tmp/
+    ssh root@$host <span class="str">"dpkg -i /tmp/wazuh-agent.deb &amp;&amp; \
+        systemctl enable wazuh-agent &amp;&amp; \
+        systemctl start wazuh-agent"</span>
+<span class="kw">done</span>
+
+<span class="cm"># proxmox_backup.sh</span>
+NODE=<span class="str">"pve-homelab"</span>
+<span class="kw">for</span> vmid <span class="kw">in</span> $(pvesh get /nodes/$NODE/qemu \
+    --output json | jq -r <span class="str">'.[].vmid'</span>); <span class="kw">do</span>
+    <span class="fn">echo</span> <span class="str">"[*] Backing up VM $vmid..."</span>
+    vzdump $vmid --storage local-backup \
+        --mode snapshot --compress zstd
+<span class="kw">done</span>
+<span class="fn">echo</span> <span class="str">"[+] All backups complete"</span>
+
+<span class="cm"># minecraft_server.log</span>
+[<span class="fn">Server</span>] <span class="str">/gamemode survival</span>
+[<span class="fn">Server</span>] <span class="str">/give @p minecraft:diamond_sword</span>
+[<span class="fn">Server</span>] <span class="str">/tp @a ~ ~100 ~</span>
+[<span class="fn">Server</span>] <span class="str">/time set day</span>
+[<span class="fn">Server</span>] <span class="str">/weather clear</span>
+[<span class="fn">Server</span>] <span class="str">/difficulty hard</span>
+[<span class="fn">Server</span>] <span class="str">/whitelist add CainHughes</span>
+[<span class="fn">Server</span>] <span class="str">/op CainHughes</span>
+[<span class="fn">Server</span>] <span class="str">/enchant @p sharpness 5</span>
+[<span class="fn">Server</span>] <span class="str">/effect give @p minecraft:speed 600 2</span></pre></div>
+    <div class="code-col code-col-2"><pre><span class="cm"># proxmox_manager.py</span>
+<span class="kw">import</span> proxmoxer
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+<span class="kw">class</span> <span class="fn">ProxmoxLab</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, host, user, passwd):
+        self.api = proxmoxer.ProxmoxAPI(
+            host, user=user,
+            password=passwd,
+            verify_ssl=<span class="kw">False</span>
+        )
+        self.node = <span class="str">'pve-homelab'</span>
+
+    <span class="kw">def</span> <span class="fn">list_vms</span>(self):
+        vms = self.api.nodes(self.node).qemu.get()
+        <span class="kw">for</span> vm <span class="kw">in</span> <span class="fn">sorted</span>(vms, key=<span class="kw">lambda</span> x: x[<span class="str">'vmid'</span>]):
+            name = vm[<span class="str">'name'</span>]
+            status = vm[<span class="str">'status'</span>]
+            <span class="fn">print</span>(<span class="str">f"  {vm['vmid']} | {name:20s} | {status}"</span>)
+
+    <span class="kw">def</span> <span class="fn">snapshot_all</span>(self, label=<span class="str">'auto-backup'</span>):
+        <span class="kw">for</span> vm <span class="kw">in</span> self.api.nodes(self.node).qemu.get():
+            <span class="kw">if</span> vm[<span class="str">'status'</span>] == <span class="str">'running'</span>:
+                self.api.nodes(self.node) \
+                    .qemu(vm[<span class="str">'vmid'</span>]) \
+                    .snapshot.create(snapname=label)
+                <span class="fn">print</span>(<span class="str">f"  [+] Snapshot: {vm['name']}"</span>)
+
+    <span class="kw">def</span> <span class="fn">create_vm</span>(self, vmid, name, cores, mem):
+        self.api.nodes(self.node).qemu.create(
+            vmid=vmid, name=name,
+            cores=cores, memory=mem,
+            net0=<span class="str">'virtio,bridge=vmbr0'</span>,
+            scsi0=<span class="str">'local-lvm:32'</span>,
+            ostype=<span class="str">'l26'</span>
+        )
+
+<span class="cm"># adguard_dns.py</span>
+<span class="kw">import</span> requests
+
+<span class="kw">class</span> <span class="fn">AdGuardDNS</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, url, auth):
+        self.url = url
+        self.auth = auth
+
+    <span class="kw">def</span> <span class="fn">stats</span>(self):
+        r = requests.get(
+            <span class="str">f"{self.url}/control/stats"</span>,
+            auth=self.auth
+        )
+        data = r.json()
+        <span class="fn">print</span>(<span class="str">f"  Queries:  {data['num_dns_queries']}"</span>)
+        <span class="fn">print</span>(<span class="str">f"  Blocked:  {data['num_blocked_filtering']}"</span>)
+
+    <span class="kw">def</span> <span class="fn">add_rewrite</span>(self, domain, ip):
+        requests.post(
+            <span class="str">f"{self.url}/control/rewrite/add"</span>,
+            auth=self.auth,
+            json={<span class="str">"domain"</span>: domain, <span class="str">"answer"</span>: ip}
+        )
+
+<span class="cm"># homelab dns rewrites</span>
+rewrites = {
+    <span class="str">"proxmox.lab"</span>:   <span class="str">"10.0.1.10"</span>,
+    <span class="str">"wazuh.lab"</span>:     <span class="str">"10.0.1.100"</span>,
+    <span class="str">"grafana.lab"</span>:   <span class="str">"10.0.1.101"</span>,
+    <span class="str">"portainer.lab"</span>: <span class="str">"10.0.1.102"</span>,
+    <span class="str">"truenas.lab"</span>:   <span class="str">"10.0.1.20"</span>,
+    <span class="str">"adguard.lab"</span>:   <span class="str">"10.0.1.1"</span>,
+}
+
+<span class="cm"># proxmox_manager.py</span>
+<span class="kw">import</span> proxmoxer
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+<span class="kw">class</span> <span class="fn">ProxmoxLab</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, host, user, passwd):
+        self.api = proxmoxer.ProxmoxAPI(
+            host, user=user,
+            password=passwd,
+            verify_ssl=<span class="kw">False</span>
+        )
+        self.node = <span class="str">'pve-homelab'</span>
+
+    <span class="kw">def</span> <span class="fn">list_vms</span>(self):
+        vms = self.api.nodes(self.node).qemu.get()
+        <span class="kw">for</span> vm <span class="kw">in</span> <span class="fn">sorted</span>(vms, key=<span class="kw">lambda</span> x: x[<span class="str">'vmid'</span>]):
+            name = vm[<span class="str">'name'</span>]
+            status = vm[<span class="str">'status'</span>]
+            <span class="fn">print</span>(<span class="str">f"  {vm['vmid']} | {name:20s} | {status}"</span>)
+
+    <span class="kw">def</span> <span class="fn">snapshot_all</span>(self, label=<span class="str">'auto-backup'</span>):
+        <span class="kw">for</span> vm <span class="kw">in</span> self.api.nodes(self.node).qemu.get():
+            <span class="kw">if</span> vm[<span class="str">'status'</span>] == <span class="str">'running'</span>:
+                self.api.nodes(self.node) \
+                    .qemu(vm[<span class="str">'vmid'</span>]) \
+                    .snapshot.create(snapname=label)
+                <span class="fn">print</span>(<span class="str">f"  [+] Snapshot: {vm['name']}"</span>)
+
+    <span class="kw">def</span> <span class="fn">create_vm</span>(self, vmid, name, cores, mem):
+        self.api.nodes(self.node).qemu.create(
+            vmid=vmid, name=name,
+            cores=cores, memory=mem,
+            net0=<span class="str">'virtio,bridge=vmbr0'</span>,
+            scsi0=<span class="str">'local-lvm:32'</span>,
+            ostype=<span class="str">'l26'</span>
+        )
+
+<span class="cm"># adguard_dns.py</span>
+<span class="kw">import</span> requests
+
+<span class="kw">class</span> <span class="fn">AdGuardDNS</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, url, auth):
+        self.url = url
+        self.auth = auth
+
+    <span class="kw">def</span> <span class="fn">stats</span>(self):
+        r = requests.get(
+            <span class="str">f"{self.url}/control/stats"</span>,
+            auth=self.auth
+        )
+        data = r.json()
+        <span class="fn">print</span>(<span class="str">f"  Queries:  {data['num_dns_queries']}"</span>)
+        <span class="fn">print</span>(<span class="str">f"  Blocked:  {data['num_blocked_filtering']}"</span>)
+
+    <span class="kw">def</span> <span class="fn">add_rewrite</span>(self, domain, ip):
+        requests.post(
+            <span class="str">f"{self.url}/control/rewrite/add"</span>,
+            auth=self.auth,
+            json={<span class="str">"domain"</span>: domain, <span class="str">"answer"</span>: ip}
+        )
+
+<span class="cm"># homelab dns rewrites</span>
+rewrites = {
+    <span class="str">"proxmox.lab"</span>:   <span class="str">"10.0.1.10"</span>,
+    <span class="str">"wazuh.lab"</span>:     <span class="str">"10.0.1.100"</span>,
+    <span class="str">"grafana.lab"</span>:   <span class="str">"10.0.1.101"</span>,
+    <span class="str">"portainer.lab"</span>: <span class="str">"10.0.1.102"</span>,
+    <span class="str">"truenas.lab"</span>:   <span class="str">"10.0.1.20"</span>,
+    <span class="str">"adguard.lab"</span>:   <span class="str">"10.0.1.1"</span>,
+}</pre></div>
+  </div>
+
+  <!-- HEADER -->
+  <header class="site-header" id="siteHeader">
+    <a href="#" class="nav-logo">cain<span>.</span>hughes</a>
+    <div class="nav-right">
+      <nav id="mainNav">
+        <ul class="nav-links">
+          <li><a href="#certs" data-section="certs">Certs</a></li>
+          <li><a href="#education" data-section="education">Education</a></li>
+          <li><a href="#homelab" data-section="homelab">Homelab</a></li>
+          <li><a href="#connect" data-section="connect">Connect</a></li>
+        </ul>
+      </nav>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme"></button>
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero" id="hero">
+      <div class="hero-glow"></div>
+      <div class="hero-content">
+        <p class="hero-eyebrow">Cybersecurity & IT Professional</p>
+        <h1 class="hero-name">Cain Hughes</h1>
+        <p class="hero-sub">
+          Security analyst and homelab engineer. CompTIA certified, focused on
+          incident response, cybersecurity posture, and self-hosted infrastructure.
+        </p>
+        <div class="hero-actions">
+          <a href="https://github.com/cain-hughes" target="_blank" class="btn btn-primary">GitHub &#8599;</a>
+          <a href="https://linkedin.com/in/cainhughes" target="_blank" class="btn btn-outline">LinkedIn &#8599;</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- CERTS -->
+    <section id="certs" class="section section--alt">
+      <div class="section-inner fade">
+        <p class="section-label">01 &mdash; Credentials</p>
+        <h2 class="section-title">Certifications</h2>
+        <div class="certs-list">
+          <a href="https://www.credly.com/badges/bdd29f2d-9812-4cd9-b0dd-e2788143a732/public_url" target="_blank" class="cert-item">
+            <div class="cert-left">
+              <span class="cert-name">(ISC)&sup2; SSCP</span>
+              <span class="cert-issuer">(ISC)&sup2;</span>
+            </div>
+            <span class="cert-arrow">&#8599;</span>
+          </a>
+          <a href="https://www.credly.com/badges/76281199-c209-4a3c-a10c-8160d70c8cb7/public_url" target="_blank" class="cert-item">
+            <div class="cert-left">
+              <span class="cert-name">CompTIA CySA+</span>
+              <span class="cert-issuer">CompTIA</span>
+            </div>
+            <span class="cert-arrow">&#8599;</span>
+          </a>
+          <a href="https://www.credly.com/badges/f7b977fc-33fb-4864-8cc3-ad372098ebf4/public_url" target="_blank" class="cert-item">
+            <div class="cert-left">
+              <span class="cert-name">CompTIA Security+</span>
+              <span class="cert-issuer">CompTIA</span>
+            </div>
+            <span class="cert-arrow">&#8599;</span>
+          </a>
+          <a href="https://www.credly.com/badges/60c31aa3-7568-4ff6-ae0d-4510bdef1f3b/public_url" target="_blank" class="cert-item">
+            <div class="cert-left">
+              <span class="cert-name">CompTIA Network+</span>
+              <span class="cert-issuer">CompTIA</span>
+            </div>
+            <span class="cert-arrow">&#8599;</span>
+          </a>
+          <a href="https://www.credly.com/badges/fdbf2f17-bd8a-4d30-a5e4-f5db1deeaf2c/public_url" target="_blank" class="cert-item">
+            <div class="cert-left">
+              <span class="cert-name">CompTIA A+</span>
+              <span class="cert-issuer">CompTIA</span>
+            </div>
+            <span class="cert-arrow">&#8599;</span>
+          </a>
+          <a href="https://cs.lpi.org/caf/Xamman/certification/verify/LPI000583111/pv2m8b8umb" target="_blank" class="cert-item">
+            <div class="cert-left">
+              <span class="cert-name">Linux Essentials</span>
+              <span class="cert-issuer">LPI</span>
+            </div>
+            <span class="cert-arrow">&#8599;</span>
+          </a>
+        </div>
+
+        <p class="stackable-heading">Stackable Certifications</p>
+        <div class="stackable-wrap">
+          <a href="https://www.credly.com/badges/18a1dd29-ac27-4881-b489-97a977bdbca1/public_url" target="_blank" class="stackable-chip">CNSP</a>
+          <a href="https://www.credly.com/badges/8327f15b-a542-4a09-a4b7-90d13dc6ce68/public_url" target="_blank" class="stackable-chip">CNVP</a>
+          <a href="https://www.credly.com/badges/63c808d4-9f7c-49bd-8355-bf5a5e066a85/public_url" target="_blank" class="stackable-chip">CSAP</a>
+          <a href="https://www.credly.com/badges/ffab03f8-b5e6-4bf5-9ac4-4587125666fc/public_url" target="_blank" class="stackable-chip">CSIS</a>
+          <a href="https://www.credly.com/badges/0ff41bfc-5553-48e3-8c55-2502c4ec7d10/public_url" target="_blank" class="stackable-chip">CIOS</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- EDUCATION -->
+    <section id="education" class="section">
+      <div class="section-inner fade">
+        <p class="section-label">02 &mdash; Education</p>
+        <h2 class="section-title">Education</h2>
+        <div class="edu-list">
+          <div class="edu-item">
+            <div class="edu-left">
+              <span class="edu-school">Western Governor's University</span>
+              <span class="edu-degree">B.S. Cybersecurity and Information Assurance</span>
+            </div>
+            <span class="edu-date">Apr 2023 &mdash; Jul 2024</span>
+          </div>
+          <div class="edu-item">
+            <div class="edu-left">
+              <span class="edu-school">Chattahoochee Technical College</span>
+              <span class="edu-degree">A.A.S. Information Systems Computer Programming</span>
+            </div>
+            <span class="edu-date">Aug 2017 &mdash; Aug 2019</span>
+          </div>
+        </div>
+        <div class="edu-resume">
+          <a href="PublicJCHResume.pdf" download class="btn btn-primary">Download Resume &#8595;</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOMELAB -->
+    <section id="homelab" class="section section--alt">
+      <div class="section-inner fade">
+        <p class="section-label">03 &mdash; Infrastructure</p>
+        <h2 class="section-title">The Homelab</h2>
+        <p class="homelab-text">
+          A self-hosted environment built on an HPE ProLiant DL380 Gen9 running Proxmox,
+          with TrueNAS CE for storage, Docker containers for services, AdGuard Home for DNS,
+          and AMP for game server hosting. The full build, configuration details, and ongoing
+          updates are documented on GitHub.
+        </p>
+        <div class="homelab-actions">
+          <a href="https://github.com/cain-hughes/Homelab" target="_blank" class="btn btn-primary">View on GitHub &#8599;</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONNECT -->
+    <section id="connect" class="section connect">
+      <div class="section-inner fade">
+        <p class="section-label">04 &mdash; Contact</p>
+        <h2 class="section-title">Let's Connect</h2>
+        <p class="connect-desc">
+          Always happy to talk cybersecurity, homelabs, or new opportunities.
+          Everything I build gets documented and shared on GitHub.
+        </p>
+        <div class="connect-actions">
+          <a href="https://github.com/cain-hughes" target="_blank" class="btn btn-primary">GitHub &#8599;</a>
+          <a href="https://linkedin.com/in/cainhughes" target="_blank" class="btn btn-outline">LinkedIn &#8599;</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    &copy; 2026 <span>Cain Hughes</span>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
