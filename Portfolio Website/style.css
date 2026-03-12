@@ -645,6 +645,10 @@ body.menu-open .site-header {
   flex-shrink: 0;
 }
 
+.cert-arrow::before {
+  content: '\2192';
+}
+
 .cert-item:hover .cert-arrow {
   color: var(--accent);
   transform: translate(2px, -2px);
